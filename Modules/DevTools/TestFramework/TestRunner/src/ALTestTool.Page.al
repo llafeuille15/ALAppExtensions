@@ -182,30 +182,56 @@ page 130451 "AL Test Tool"
     {
         area(processing)
         {
-            group("Manage Tests")
+            group("Run Tests")
             {
-                Caption = 'Manage Tests';
-                action(DeleteLines)
+                Caption = 'Run Tests';
+                action(RunTests)
                 {
                     ApplicationArea = All;
-                    Caption = '&Delete Lines';
-                    Image = Delete;
+                    Caption = '&Run Tests';
+                    Image = Start;
                     Promoted = true;
                     PromotedCategory = Process;
                     PromotedIsBig = true;
                     PromotedOnly = true;
-                    ToolTip = 'Delete the selected lines.';
+                    ToolTip = 'Runs tests.';
+
+                    trigger OnAction()
+                    var
+                        TestSuiteMgt: Codeunit "Test Suite Mgt.";
+                        TestRunnerProgessDialog: Codeunit "Test Runner - Progress Dialog";
+                    begin
+                        BindSubscription(TestRunnerProgessDialog);
+                        TestSuiteMgt.RunTestSuiteSelection(Rec);
+                        CurrPage.Update(true);
+                    end;
+                }
+                action(RunSelectedTests)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Run Se&lected Tests';
+                    Image = TestFile;
+                    Promoted = true;
+                    PromotedCategory = Process;
+                    PromotedIsBig = true;
+                    PromotedOnly = true;
+                    ToolTip = 'Runs selected tests.';
 
                     trigger OnAction()
                     var
                         TestMethodLine: Record "Test Method Line";
                         TestSuiteMgt: Codeunit "Test Suite Mgt.";
                     begin
+                        TestMethodLine.Copy(Rec);
                         CurrPage.SetSelectionFilter(TestMethodLine);
-                        TestMethodLine.DeleteAll(true);
-                        TestSuiteMgt.CalcTestResults(Rec, Success, Failure, Skipped, NotExecuted);
+                        TestSuiteMgt.RunSelectedTests(TestMethodLine);
+                        CurrPage.Update(true);
                     end;
                 }
+            }
+            group("Manage Tests")
+            {
+                Caption = 'Manage Tests';
                 action(GetTestCodeunits)
                 {
                     ApplicationArea = All;
@@ -263,50 +289,45 @@ page 130451 "AL Test Tool"
                         CurrPage.Update(false);
                     end;
                 }
-            }
-            group("Run Tests")
-            {
-                Caption = 'Run Tests';
-                action(RunTests)
+                action(DeleteLines)
                 {
                     ApplicationArea = All;
-                    Caption = '&Run Tests';
-                    Image = Start;
+                    Caption = '&Delete Lines';
+                    Image = Delete;
                     Promoted = true;
                     PromotedCategory = Process;
                     PromotedIsBig = true;
                     PromotedOnly = true;
-                    ToolTip = 'Runs selected tests.';
-
-                    trigger OnAction()
-                    var
-                        TestSuiteMgt: Codeunit "Test Suite Mgt.";
-                        TestRunnerProgessDialog: Codeunit "Test Runner - Progress Dialog";
-                    begin
-                        BindSubscription(TestRunnerProgessDialog);
-                        TestSuiteMgt.RunTestSuiteSelection(Rec);
-                        CurrPage.Update(true);
-                    end;
-                }
-                action(RunSelectedTests)
-                {
-                    ApplicationArea = All;
-                    Caption = 'Run Se&lected Tests';
-                    Image = TestFile;
-                    Promoted = true;
-                    PromotedCategory = Process;
-                    PromotedIsBig = true;
-                    PromotedOnly = true;
+                    ToolTip = 'Delete the selected lines.';
 
                     trigger OnAction()
                     var
                         TestMethodLine: Record "Test Method Line";
                         TestSuiteMgt: Codeunit "Test Suite Mgt.";
                     begin
-                        TestMethodLine.Copy(Rec);
+                        if GuiAllowed() then
+                            if not Confirm(DeleteQst, false) then
+                                exit;
+
                         CurrPage.SetSelectionFilter(TestMethodLine);
-                        TestSuiteMgt.RunSelectedTests(TestMethodLine);
-                        CurrPage.Update(true);
+                        TestMethodLine.DeleteAll(true);
+                        TestSuiteMgt.CalcTestResults(Rec, Success, Failure, Skipped, NotExecuted);
+                    end;
+                }
+                action(InvertRun)
+                {
+                    ApplicationArea = All;
+                    Caption = '&Invert Run Selection';
+                    Image = Change;
+                    Promoted = true;
+                    PromotedCategory = Process;
+                    PromotedIsBig = true;
+                    PromotedOnly = true;
+                    ToolTip = 'Invert Run Selection on selected lines.';
+
+                    trigger OnAction()
+                    begin
+                        InvertRunSelection();
                     end;
                 }
             }
@@ -369,6 +390,7 @@ page 130451 "AL Test Tool"
         RunDuration: Duration;
         TestRunnerDisplayName: Text;
         ErrorMessageWithStackTraceTxt: Text;
+        DeleteQst: Label 'Are you sure you want to delete the selected lines?';
 
     local procedure ChangeTestSuite()
     var
@@ -426,5 +448,18 @@ page 130451 "AL Test Tool"
     begin
         RunDuration := "Finish Time" - "Start Time";
         ErrorMessageWithStackTraceTxt := TestSuiteMgt.GetErrorMessageWithStackTrace(Rec);
+    end;
+
+    local procedure  InvertRunSelection()
+    var
+        TestMethodLine: Record "Test Method Line";
+    begin
+        CurrPage.SetSelectionFilter(TestMethodLine);
+
+        if TestMethodLine.FindSet(true, false) then
+            repeat
+                TestMethodLine.Validate(Run, not TestMethodLine.Run);
+                TestMethodLine.Modify(true);
+            until TestMethodLine.Next() = 0;
     end;
 }

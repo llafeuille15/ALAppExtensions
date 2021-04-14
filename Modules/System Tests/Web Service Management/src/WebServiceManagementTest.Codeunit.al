@@ -25,7 +25,7 @@ codeunit 139043 "Web Service Management Test"
         PageBTxt: Label 'PageB';
         PageCTxt: Label 'PageC';
         PageDTxt: Label 'PageD';
-
+        ODataUnboundActionHelpUrlLbl: Label 'https://go.microsoft.com/fwlink/?linkid=2138827';
 
     [Test]
     [Scope('OnPrem')]
@@ -55,7 +55,7 @@ codeunit 139043 "Web Service Management Test"
 
         if WebServiceAggregate.Get(WebService."Object Type"::Codeunit, CodeunitServiceTxt) then begin
             VerifyUrlMissingServiceName(WebServiceManagement.GetWebServiceUrl(WebServiceAggregate, ClientType::ODataV3), CodeunitServiceTxt);
-            VerifyUrlMissingServiceName(WebServiceManagement.GetWebServiceUrl(WebServiceAggregate, ClientType::ODataV4), CodeunitServiceTxt);
+            VerifyODataV4CodeunitHelpUrl(WebServiceManagement.GetWebServiceUrl(WebServiceAggregate, ClientType::ODataV4), CodeunitServiceTxt);
             VerifyUrlHasServiceName(WebServiceManagement.GetWebServiceUrl(WebServiceAggregate, ClientType::SOAP), CodeunitServiceTxt);
         end;
 
@@ -322,6 +322,8 @@ codeunit 139043 "Web Service Management Test"
         TempWebServiceAggregate."Object Type" := TempWebServiceAggregate."Object Type"::Page;
         TempWebServiceAggregate."Object ID" := PAGE::"Dummy Page";
         TempWebServiceAggregate."Service Name" := AutoServiceName;
+        TempWebServiceAggregate.ExcludeFieldsOutsideRepeater := false;
+        TempWebServiceAggregate.ExcludeNonEditableFlowFields := false;
         TempWebServiceAggregate."All Tenants" := true;
         TempWebServiceAggregate.Published := true;
         TempWebServiceAggregate.Insert(true);
@@ -329,9 +331,11 @@ codeunit 139043 "Web Service Management Test"
         Assert.IsTrue(
           WebService.Get(WebService."Object Type"::Page, AutoServiceName), AutoServiceName + ' should exist in the Web Service table');
 
-        // Change 'Object ID' and 'Publish'
+        // Change 'Object ID', 'Publish', 'ExcludeFieldsOutsideRepeater' and 'ExcludeNonEditableFlowFields'
         TempWebServiceAggregate.Get(TempWebServiceAggregate."Object Type"::Page, AutoServiceName);
         TempWebServiceAggregate."Object ID" := PAGE::"Dummy Page2";
+        TempWebServiceAggregate.ExcludeFieldsOutsideRepeater := true;
+        TempWebServiceAggregate.ExcludeNonEditableFlowFields := true;
         TempWebServiceAggregate.Published := false;
         TempWebServiceAggregate.Modify(true);
 
@@ -339,6 +343,12 @@ codeunit 139043 "Web Service Management Test"
           WebService.Get(WebService."Object Type"::Page, AutoServiceName), AutoServiceName + ' should exist in the Web Service table');
         Assert.AreEqual(WebService."Object Type"::Page, WebService."Object Type", AutoServiceName + ' object type should be page.');
         Assert.IsFalse(WebService.Published, AutoServiceName + ' should not be published');
+        Assert.IsTrue(
+          WebService.ExcludeFieldsOutsideRepeater,
+          AutoServiceName + ' should exclude fields outside repeater');
+        Assert.IsTrue(
+          WebService.ExcludeNonEditableFlowFields,
+          AutoServiceName + ' should exclude non-editable flow fields');
 
         // Change 'Object Type'
         TempWebServiceAggregate."Object ID" := QUERY::"Dummy Query";
@@ -385,6 +395,8 @@ codeunit 139043 "Web Service Management Test"
         TempWebServiceAggregate."Object Type" := TempWebServiceAggregate."Object Type"::Page;
         TempWebServiceAggregate."Object ID" := PAGE::"Dummy Page";
         TempWebServiceAggregate."Service Name" := AutoServiceName;
+        TempWebServiceAggregate.ExcludeFieldsOutsideRepeater := false;
+        TempWebServiceAggregate.ExcludeNonEditableFlowFields := false;
         TempWebServiceAggregate."All Tenants" := false;
         TempWebServiceAggregate.Published := true;
         TempWebServiceAggregate.Insert(true);
@@ -393,9 +405,11 @@ codeunit 139043 "Web Service Management Test"
           TenantWebService.Get(WebService."Object Type"::Page, AutoServiceName),
           AutoServiceName + ' should exist in the Tenant Web Service table');
 
-        // Change 'Object ID' and 'Publish'
+        // Change 'Object ID', 'Publish', 'ExcludeFieldsOutsideRepeater' and 'ExcludeNonEditableFlowFields'
         TempWebServiceAggregate.Get(TempWebServiceAggregate."Object Type"::Page, AutoServiceName);
         TempWebServiceAggregate."Object ID" := PAGE::"Dummy Page2";
+        TempWebServiceAggregate.ExcludeFieldsOutsideRepeater := true;
+        TempWebServiceAggregate.ExcludeNonEditableFlowFields := true;
         TempWebServiceAggregate.Published := false;
         TempWebServiceAggregate.Modify(true);
 
@@ -405,6 +419,12 @@ codeunit 139043 "Web Service Management Test"
         Assert.AreEqual(
           TenantWebService."Object Type"::Page, TenantWebService."Object Type", AutoServiceName + ' object type should be page.');
         Assert.IsFalse(TenantWebService.Published, AutoServiceName + ' should not be published');
+        Assert.IsTrue(
+          TenantWebService.ExcludeFieldsOutsideRepeater,
+          AutoServiceName + ' should exclude fields outside repeater');
+        Assert.IsTrue(
+          TenantWebService.ExcludeNonEditableFlowFields,
+          AutoServiceName + ' should exclude non-editable flow fields');
 
         // Change 'Object Type'
         TempWebServiceAggregate."Object ID" := QUERY::"Dummy Query";
@@ -574,6 +594,11 @@ codeunit 139043 "Web Service Management Test"
     local procedure VerifyUrlMissingServiceName(Url: Text; ServiceName: Text[240])
     begin
         Assert.AreEqual('Not applicable', Url, StrSubstNo('Url was ''%1'' but should be "Not applicable" for ''%2''.', Url, ServiceName));
+    end;
+
+    local procedure VerifyODataV4CodeunitHelpUrl(Url: Text; ServiceName: Text[240])
+    begin
+        Assert.AreEqual(ODataUnboundActionHelpUrlLbl, Url, StrSubstNo('Url was ''%1'' but should be "Not applicable" for ''%2''.', Url, ServiceName));
     end;
 
     local procedure Initialize()
